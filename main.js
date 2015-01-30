@@ -1,0 +1,90 @@
+var Su = require('u-su'),
+    Resolver = require('y-resolver'),
+    walk = require('y-walk'),
+    
+    state = Su(),
+    resolver = Su(),
+    
+    Emitter,
+    Target;
+
+// Emitter
+
+module.exports = Emitter = function Emitter(Constructor){
+  Constructor = Constructor || Target;
+  Object.defineProperty(this,'target',{value: new Constructor()});
+};
+
+Object.defineProperties(Emitter.prototype,{
+  
+  give: {value: function(event,data){
+    var res = this.target[resolver][event];
+    
+    if(res && !res.yielded.done){
+      res.accept(data);
+      delete this.target[resolver][event];
+    }
+    
+  }},
+  
+  throw: {value: function(event,error){
+    var res = this.target[resolver][event];
+    
+    if(res && !res.yielded.done){
+      res.reject(error);
+      delete this.target[resolver][event];
+    }
+    
+  }},
+  
+  set: {value: function(event,data){
+    
+    (this.target[resolver][event] = this.target[resolver][event] || new Resolver()).accept(data);
+    
+  }},
+  
+  setError: {value: function(event,error){
+    
+    (this.target[resolver][event] = this.target[resolver][event] || new Resolver()).reject(error);
+    
+  }},
+  
+  unset: {value: function(event){
+    var resolver = this.target[resolver][event];
+    
+    if(resolver && resolver.yielded.done) delete this.target[resolver][event];
+    
+  }}
+  
+});
+
+// Target
+
+Emitter.Target = Target = function Target(){
+  this[state] = {};
+  this[resolver] = {};
+};
+
+Object.defineProperties(Target.prototype,{
+  
+  walk: {value: function(generator,args){
+    walk(generator,args,this);
+  }},
+  
+  until: {value: function(event){
+    
+    this[resolver][event] = this[resolver][event] || new Resolver();
+    return this[resolver][event].yielded;
+    
+  }},
+  
+  is: {value: function(event){
+    return !!(this[resolver][event] && this[resolver][event].yielded.accepted);
+  }},
+  
+  failed: {value: function(event){
+    return !!(this[resolver][event] && this[resolver][event].yielded.accepted);
+  }}
+  
+});
+

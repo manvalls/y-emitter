@@ -1,0 +1,20 @@
+{
+  "name": "y-emitter",
+  "version": "0.0.0",
+  "description": "Yielding emitter",
+  "main": "main.js",
+  "dependencies": {
+    "u-su": "",
+    "y-resolver": "",
+    "y-walk": ""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/manvalls/y-emitter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/manvalls/y-emitter/issues"
+  },
+  "author": "Manuel Valls Fernández <manolo@chatiku.com>",
+  "license": "LGPL-3.0"
+}
