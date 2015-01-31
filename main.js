@@ -21,8 +21,8 @@ Object.defineProperties(Emitter.prototype,{
     var res = this.target[resolver][event];
     
     if(res && !res.yielded.done){
-      res.accept(data);
       delete this.target[resolver][event];
+      res.accept(data);
     }
     
   }},
@@ -31,8 +31,8 @@ Object.defineProperties(Emitter.prototype,{
     var res = this.target[resolver][event];
     
     if(res && !res.yielded.done){
-      res.reject(error);
       delete this.target[resolver][event];
+      res.reject(error);
     }
     
   }},
