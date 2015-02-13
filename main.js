@@ -97,11 +97,11 @@ Object.defineProperties(Target.prototype,targetBag = {
 
 // Hybrid
 
-Emitter.Hybrid = Hybrid = function HybridEmitter(){
+Emitter.Hybrid = Hybrid = function HybridTarget(){
   this[target] = this;
   this[state] = {};
   this[resolver] = {};
 };
 
-Emitter.prototype = new Target();
+Hybrid.prototype = new Target();
 Object.defineProperties(Hybrid.prototype,emitterBag);
