@@ -6,8 +6,7 @@ var Su = require('u-su'),
     resolver = Su(),
     target = Su(),
     
-    emitterBag,
-    targetBag,
+    bag,
     
     Emitter,
     Target,
@@ -20,7 +19,7 @@ module.exports = Emitter = function Emitter(Constructor){
   this[target] = new Constructor();
 };
 
-Object.defineProperties(Emitter.prototype,emitterBag = {
+Object.defineProperties(Emitter.prototype,bag = {
   
   target: {get: function(){ return this[target]; }},
   
@@ -72,7 +71,7 @@ Emitter.Target = Target = function Target(){
   this[resolver] = {};
 };
 
-Object.defineProperties(Target.prototype,targetBag = {
+Object.defineProperties(Target.prototype,{
   
   walk: {value: function(generator,args){
     walk(generator,args,this);
@@ -104,4 +103,4 @@ Emitter.Hybrid = Hybrid = function HybridTarget(){
 };
 
 Hybrid.prototype = new Target();
-Object.defineProperties(Hybrid.prototype,emitterBag);
+Object.defineProperties(Hybrid.prototype,bag);
