@@ -103,5 +103,5 @@ Emitter.Hybrid = Hybrid = function HybridEmitter(){
   this[resolver] = {};
 };
 
+Emitter.prototype = new Target();
 Object.defineProperties(Hybrid.prototype,emitterBag);
-Object.defineProperties(Hybrid.prototype,targetBag);
