@@ -4,34 +4,41 @@ var Su = require('u-su'),
     
     state = Su(),
     resolver = Su(),
+    target = Su(),
+    
+    emitterBag,
+    targetBag,
     
     Emitter,
-    Target;
+    Target,
+    Hybrid;
 
 // Emitter
 
 module.exports = Emitter = function Emitter(Constructor){
   Constructor = Constructor || Target;
-  Object.defineProperty(this,'target',{value: new Constructor()});
+  this[target] = new Constructor();
 };
 
-Object.defineProperties(Emitter.prototype,{
+Object.defineProperties(Emitter.prototype,emitterBag = {
+  
+  target: {get: function(){ return this[target]; }},
   
   give: {value: function(event,data){
-    var res = this.target[resolver][event];
+    var res = this[target][resolver][event];
     
     if(res && !res.yielded.done){
-      delete this.target[resolver][event];
+      delete this[target][resolver][event];
       res.accept(data);
     }
     
   }},
   
   throw: {value: function(event,error){
-    var res = this.target[resolver][event];
+    var res = this[target][resolver][event];
     
     if(res && !res.yielded.done){
-      delete this.target[resolver][event];
+      delete this[target][resolver][event];
       res.reject(error);
     }
     
@@ -39,20 +46,20 @@ Object.defineProperties(Emitter.prototype,{
   
   set: {value: function(event,data){
     
-    (this.target[resolver][event] = this.target[resolver][event] || new Resolver()).accept(data);
+    (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).accept(data);
     
   }},
   
   setError: {value: function(event,error){
     
-    (this.target[resolver][event] = this.target[resolver][event] || new Resolver()).reject(error);
+    (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).reject(error);
     
   }},
   
   unset: {value: function(event){
-    var resolver = this.target[resolver][event];
+    var res = this[target][resolver][event];
     
-    if(resolver && resolver.yielded.done) delete this.target[resolver][event];
+    if(res && res.yielded.done) delete this[target][resolver][event];
     
   }}
   
@@ -65,7 +72,7 @@ Emitter.Target = Target = function Target(){
   this[resolver] = {};
 };
 
-Object.defineProperties(Target.prototype,{
+Object.defineProperties(Target.prototype,targetBag = {
   
   walk: {value: function(generator,args){
     walk(generator,args,this);
@@ -88,3 +95,13 @@ Object.defineProperties(Target.prototype,{
   
 });
 
+// Hybrid
+
+Emitter.Hybrid = Hybrid = function HybridEmitter(){
+  this[target] = this;
+  this[state] = {};
+  this[resolver] = {};
+};
+
+Object.defineProperties(Hybrid.prototype,emitterBag);
+Object.defineProperties(Hybrid.prototype,targetBag);
