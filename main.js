@@ -69,7 +69,14 @@ Object.defineProperties(Emitter.prototype,bag = {
 
 // Target
 
-Emitter.Target = Target = function Target(){
+Emitter.Target = Target = function Target(prop){
+  if(this[emitter]) return;
+  
+  if(prop){
+    this[emitter] = this[prop] = Object.create(Emitter.prototype);
+    this[emitter][target] = this;
+  }
+  
   this[state] = {};
   this[resolver] = {};
 };
