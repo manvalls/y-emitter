@@ -30,8 +30,8 @@ Object.defineProperties(Emitter.prototype,bag = {
     
     if(res && !res.yielded.done){
       delete this[target][resolver][event];
-      res.accept(data);
       this.unset(event + ' listened');
+      res.accept(data);
     }
     
   }},
@@ -47,10 +47,10 @@ Object.defineProperties(Emitter.prototype,bag = {
   }},
   
   set: {value: function(event,data){
+    var res = this[target][resolver][event] = this[target][resolver][event] || new Resolver();
     
-    (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).accept(data);
     this.unset(event + ' listened');
-    
+    res.accept(data);
   }},
   
   setError: {value: function(event,error){
@@ -92,7 +92,7 @@ Object.defineProperties(Target.prototype,{
     
     if(!res){
       res = this[resolver][event] = new Resolver();
-      this[emitter].set(event + ' listened');
+      walk(setListened,[event,this[emitter],res.yielded]);
     }
     
     return res.yielded;
@@ -113,14 +113,23 @@ Object.defineProperties(Target.prototype,{
 
 Emitter.Hybrid = Hybrid = function HybridTarget(){
   this[target] = this;
+  this[emitter] = this;
+  
   this[state] = {};
   this[resolver] = {};
 };
 
 Hybrid.prototype = new Target();
+Hybrid.prototype.constructor = Hybrid;
+
 Object.defineProperties(Hybrid.prototype,bag);
 
 // Auxiliar
+
+function* setListened(event,emitter,yd){
+  yield walk.before(yd);
+  emitter.set(event + ' listened');
+}
 
 Emitter.chain = function(){
   var last = arguments[arguments.length - 1][target],
