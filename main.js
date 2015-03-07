@@ -7,6 +7,8 @@ var Su = require('u-su'),
     target = Su(),
     emitter = Su(),
     
+    active = Su(),
+    
     bag,
     
     Emitter,
@@ -69,6 +71,17 @@ Object.defineProperties(Emitter.prototype,bag = {
 
 // Target
 
+function* call(l,event,extra){
+  var e;
+  
+  e = yield this.until(event);
+  while(l[active][event]){
+    walk(l,[e,extra],this);
+    e = yield this.until(event);
+  }
+  
+}
+
 Emitter.Target = Target = function Target(prop){
   if(this[emitter]) return;
   
@@ -105,6 +118,17 @@ Object.defineProperties(Target.prototype,{
   
   failed: {value: function(event){
     return !!(this[resolver][event] && this[resolver][event].yielded.rejected);
+  }},
+  
+  on: {value: function(event,listener,extra){
+    listener[active] = listener[active] || {};
+    listener[active][event] = true;
+    walk(call,[listener,event,extra],this);
+  }},
+  
+  detach: {value: function(event,listener){
+    if(!(listener[active] && listener[active][event])) return;
+    listener[active][event] = false;
   }}
   
 });
