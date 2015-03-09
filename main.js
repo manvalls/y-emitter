@@ -109,30 +109,49 @@ Object.defineProperties(Target.prototype,{
     return !!(this[resolver][event] && this[resolver][event].yielded.rejected);
   }},
   
-  on: {value: walk.wrap(function*(event,listener,extra){
-    var e;
+  on: {value: walk.wrap(function*(){
+    var event = arguments[0],
+        listener = arguments[1];
     
     listener[active] = listener[active] || {};
-    if(listener[active][event]) return;
+    
+    if(listener[active][event] != null){
+      listener[active][event] = true;
+      return;
+    }
+    
     listener[active][event] = true;
     
-    e = yield this.until(event);
+    arguments[1] = event;
+    arguments[0] = yield this.until(event);
+    
     while(listener[active][event]){
-      walk(listener,[e,extra],this);
-      e = yield this.until(event);
+      walk(listener,arguments,this);
+      arguments[0] = yield this.until(event);
     }
+    
+    delete listener[active][event];
     
   })},
   
-  once: {value: walk.wrap(function*(event,listener,extra){
-    var e;
+  once: {value: walk.wrap(function*(){
+    var event = arguments[0],
+        listener = arguments[1];
     
     listener[active] = listener[active] || {};
-    if(listener[active][event]) return;
+    
+    if(listener[active][event] != null){
+      listener[active][event] = true;
+      return;
+    }
+    
     listener[active][event] = true;
     
-    e = yield this.until(event);
-    if(listener[active][event]) walk(listener,[e,extra],this);
+    arguments[1] = event;
+    arguments[0] = yield this.until(event);
+    
+    if(listener[active][event]) walk(listener,arguments,this);
+    delete listener[active][event];
     
   })},
   
