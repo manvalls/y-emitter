@@ -71,6 +71,31 @@ Object.defineProperties(Emitter.prototype,bag = {
 
 // Target
 
+function Cbc(){
+  this[active] = true;
+}
+
+Object.defineProperties(Cbc.prototype,'detach',{value: function(){
+  this[active] = false;
+}});
+
+function* callOn(cbc,args,event,listener){
+  
+  args[0] = yield this.until(event);
+  while(cbc[active]){
+    walk(listener,args,this);
+    args[0] = yield this.until(event);
+  }
+  
+}
+
+function* callOnce(cbc,args,event,listener){
+  
+  args[0] = yield this.until(event);
+  if(cbc[active]) walk(listener,args,this);
+  
+}
+
 Emitter.Target = Target = function Target(prop){
   if(this[emitter]) return;
   
@@ -79,6 +104,7 @@ Emitter.Target = Target = function Target(prop){
     this[emitter][target] = this;
   }
   
+  this[active] = Su();
   this[state] = {};
   this[resolver] = {};
 };
@@ -111,54 +137,25 @@ Object.defineProperties(Target.prototype,{
   
   on: {value: walk.wrap(function*(){
     var event = arguments[0],
-        listener = arguments[1];
+        listener = arguments[1],
+        cbc = new Cbc();
     
-    listener[active] = listener[active] || {};
+    arguments[1] = cbc;
+    walk(callOn,[cbc,arguments,event,listener]);
     
-    if(listener[active][event] != null){
-      listener[active][event] = true;
-      return;
-    }
-    
-    listener[active][event] = true;
-    
-    arguments[1] = event;
-    arguments[0] = yield this.until(event);
-    
-    while(listener[active][event]){
-      walk(listener,arguments,this);
-      arguments[0] = yield this.until(event);
-    }
-    
-    delete listener[active][event];
-    
+    return cbc;
   })},
   
   once: {value: walk.wrap(function*(){
     var event = arguments[0],
-        listener = arguments[1];
+        listener = arguments[1],
+        cbc = new Cbc();
     
-    listener[active] = listener[active] || {};
+    arguments[1] = cbc;
+    walk(callOnce,[cbc,arguments,event,listener]);
     
-    if(listener[active][event] != null){
-      listener[active][event] = true;
-      return;
-    }
-    
-    listener[active][event] = true;
-    
-    arguments[1] = event;
-    arguments[0] = yield this.until(event);
-    
-    if(listener[active][event]) walk(listener,arguments,this);
-    delete listener[active][event];
-    
-  })},
-  
-  detach: {value: function(event,listener){
-    if(!(listener[active] && listener[active][event])) return;
-    listener[active][event] = false;
-  }}
+    return cbc;
+  })}
   
 });
 
@@ -168,6 +165,7 @@ Emitter.Hybrid = Hybrid = function HybridTarget(){
   this[target] = this;
   this[emitter] = this;
   
+  this[active] = Su();
   this[state] = {};
   this[resolver] = {};
 };
