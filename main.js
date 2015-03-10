@@ -75,7 +75,7 @@ function Cbc(){
   this[active] = true;
 }
 
-Object.defineProperties(Cbc.prototype,'detach',{value: function(){
+Object.defineProperty(Cbc.prototype,'detach',{value: function(){
   this[active] = false;
 }});
 
@@ -135,27 +135,27 @@ Object.defineProperties(Target.prototype,{
     return !!(this[resolver][event] && this[resolver][event].yielded.rejected);
   }},
   
-  on: {value: walk.wrap(function*(){
+  on: {value: function(){
     var event = arguments[0],
         listener = arguments[1],
         cbc = new Cbc();
     
     arguments[1] = cbc;
-    walk(callOn,[cbc,arguments,event,listener]);
+    walk(callOn,[cbc,arguments,event,listener],this);
     
     return cbc;
-  })},
+  }},
   
-  once: {value: walk.wrap(function*(){
+  once: {value: function(){
     var event = arguments[0],
         listener = arguments[1],
         cbc = new Cbc();
     
     arguments[1] = cbc;
-    walk(callOnce,[cbc,arguments,event,listener]);
+    walk(callOnce,[cbc,arguments,event,listener],this);
     
     return cbc;
-  })}
+  }}
   
 });
 
