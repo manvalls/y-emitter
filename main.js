@@ -178,7 +178,7 @@ Object.defineProperties(Hybrid.prototype,bag);
 // Auxiliar
 
 function* setListened(event,emitter,yd){
-  yield walk.before(yd);
+  yield yd.before();
   emitter.set(event + ' listened');
 }
 
