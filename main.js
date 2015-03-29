@@ -127,6 +127,13 @@ Object.defineProperties(Target.prototype,{
     
   }},
   
+  listeners: {value: function(event){
+    var res;
+    
+    if(res = this[resolver][event]) return res.yielded.listeners;
+    return 0;
+  }},
+  
   is: {value: function(event){
     return !!(this[resolver][event] && this[resolver][event].yielded.accepted);
   }},
