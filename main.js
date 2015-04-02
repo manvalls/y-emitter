@@ -110,7 +110,14 @@ Object.defineProperties(Target.prototype,{
   }},
   
   until: {value: function(event){
-    return (this[resolver][event] = this[resolver][event] || new Resolver()).yielded;
+    var res = this[resolver][event];
+    
+    if(res) return res.yielded;
+    
+    res = this[resolver][event] = new Resolver();
+    this[emitter].give(this.event,event);
+    
+    return res.yielded;
   }},
   
   listeners: {value: function(event){
@@ -148,7 +155,9 @@ Object.defineProperties(Target.prototype,{
     walk(callOnce,[cbc,arguments,event,listener],this);
     
     return cbc;
-  }}
+  }},
+  
+  event: {value: Su()}
   
 });
 
