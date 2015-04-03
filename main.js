@@ -6,6 +6,7 @@ var Su = require('u-su'),
     resolver = Su(),
     target = Su(),
     emitter = Su(),
+    syn = Su(),
     
     active = Su(),
     
@@ -28,7 +29,10 @@ Object.defineProperties(Emitter.prototype,bag = {
   target: {get: function(){ return this[target]; }},
   
   give: {value: function(event,data){
-    var res = this[target][resolver][event];
+    var res;
+    
+    while(this[target][syn].hasOwnProperty(event)) event = this[target][syn][event];
+    res = this[target][resolver][event];
     
     if(res && !res.yielded.done){
       delete this[target][resolver][event];
@@ -38,7 +42,10 @@ Object.defineProperties(Emitter.prototype,bag = {
   }},
   
   throw: {value: function(event,error){
-    var res = this[target][resolver][event];
+    var res;
+    
+    while(this[target][syn].hasOwnProperty(event)) event = this[target][syn][event];
+    res = this[target][resolver][event];
     
     if(res && !res.yielded.done){
       delete this[target][resolver][event];
@@ -48,17 +55,30 @@ Object.defineProperties(Emitter.prototype,bag = {
   }},
   
   set: {value: function(event,data){
+    while(this[target][syn].hasOwnProperty(event)) event = this[target][syn][event];
     (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).accept(data);
   }},
   
   setError: {value: function(event,error){
+    while(this[target][syn].hasOwnProperty(event)) event = this[target][syn][event];
     (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).reject(error);
   }},
   
   unset: {value: function(event){
-    var res = this[target][resolver][event];
+    var res;
+    
+    while(this[target][syn].hasOwnProperty(event)) event = this[target][syn][event];
+    res = this[target][resolver][event];
     
     if(res && res.yielded.done) delete this[target][resolver][event];
+  }},
+  
+  syn: {value: function(from,to){
+    this[target][syn][from] = to;
+  }},
+  
+  unsyn: {value: function(from){
+    delete this[target][syn][from];
   }}
   
 });
@@ -98,7 +118,7 @@ Emitter.Target = Target = function Target(prop){
     this[emitter][target] = this;
   }
   
-  this[active] = Su();
+  this[syn] = {};
   this[state] = {};
   this[resolver] = {};
 };
@@ -110,8 +130,11 @@ Object.defineProperties(Target.prototype,{
   }},
   
   until: {value: function(event){
-    var res = this[resolver][event];
+    var res;
     
+    while(this[syn].hasOwnProperty(event)) event = this[syn][event];
+    
+    res = this[resolver][event];
     if(res) return res.yielded;
     
     res = this[resolver][event] = new Resolver();
@@ -123,15 +146,21 @@ Object.defineProperties(Target.prototype,{
   listeners: {value: function(event){
     var res;
     
+    while(this[syn].hasOwnProperty(event)) event = this[syn][event];
+    
     if(res = this[resolver][event]) return res.yielded.listeners.value;
     return 0;
   }},
   
   is: {value: function(event){
+    while(this[syn].hasOwnProperty(event)) event = this[syn][event];
+    
     return !!(this[resolver][event] && this[resolver][event].yielded.accepted);
   }},
   
   failed: {value: function(event){
+    while(this[syn].hasOwnProperty(event)) event = this[syn][event];
+    
     return !!(this[resolver][event] && this[resolver][event].yielded.rejected);
   }},
   
@@ -167,7 +196,7 @@ Emitter.Hybrid = Hybrid = function HybridTarget(){
   this[target] = this;
   this[emitter] = this;
   
-  this[active] = Su();
+  this[syn] = {};
   this[state] = {};
   this[resolver] = {};
 };
