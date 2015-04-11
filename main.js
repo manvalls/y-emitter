@@ -73,6 +73,11 @@ Object.defineProperties(Emitter.prototype,bag = {
     if(res && res.yielded.done) delete this[target][resolver][event];
   }},
   
+  sun: {value: function(state1,state2){
+    this.unset(state2);
+    this.set(state1);
+  }},
+  
   syn: {value: function(from,to){
     this[target][syn][from] = to;
   }},
