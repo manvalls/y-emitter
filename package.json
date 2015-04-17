@@ -5,7 +5,8 @@
   "main": "main.js",
   "dependencies": {
     "u-su": "",
-    "y-resolver": ""
+    "y-resolver": "",
+    "y-walk": ""
   },
   "repository": {
     "type": "git",

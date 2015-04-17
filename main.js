@@ -7,8 +7,9 @@ var Su = require('u-su'),
     target = Su(),
     emitter = Su(),
     syn = Su(),
-    
     active = Su(),
+    
+    reserved = {},
     
     bag,
     
@@ -39,6 +40,8 @@ Object.defineProperties(Emitter.prototype,bag = {
       res.accept(data);
     }
     
+    
+    if(!this[target].isReserved(event)) this.give(this[target].any,arguments);
   }},
   
   throw: {value: function(event,error){
@@ -191,9 +194,17 @@ Object.defineProperties(Target.prototype,{
     return cbc;
   }},
   
-  event: {value: Su()}
+  event: {value: Su()},
+  any: {value: Su()},
+  
+  isReserved: {value: function(event){
+    return !!reserved[event];
+  }}
   
 });
+
+reserved[Target.prototype.any] = true;
+reserved[Target.prototype.event] = true;
 
 // Hybrid
 
