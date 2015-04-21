@@ -166,6 +166,12 @@ Object.defineProperties(Target.prototype,{
     return !!(this[resolver][event] && this[resolver][event].yielded.accepted);
   }},
   
+  isNot: {value: function(event){
+    while(this[syn].hasOwnProperty(event)) event = this[syn][event];
+    
+    return !(this[resolver][event] && this[resolver][event].yielded.accepted);
+  }},
+  
   failed: {value: function(event){
     while(this[syn].hasOwnProperty(event)) event = this[syn][event];
     
