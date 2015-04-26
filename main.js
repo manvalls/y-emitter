@@ -12,7 +12,7 @@ var Su = require('u-su'),
     
     reserved = {},
     
-    bag,
+    bag,any,
     
     Emitter,
     Target,
@@ -26,28 +26,36 @@ module.exports = Emitter = function Emitter(Constructor){
   this[target][emitter] = this;
 };
 
+function give(event,data,that){
+  var res;
+  
+  res = that[target][resolver][event];
+  
+  if(res && !res.yielded.done){
+    delete that[target][resolver][event];
+    res.accept(data);
+  }
+  
+}
+
 Object.defineProperties(Emitter.prototype,bag = {
   
   target: {get: function(){ return this[target]; }},
   
   give: {value: function(event,data){
-    var res;
-    
     event = this[target].compute(event);
-    res = this[target][resolver][event];
+    if(this[target].isReserved(event)) return;
     
-    if(res && !res.yielded.done){
-      delete this[target][resolver][event];
-      res.accept(data);
-    }
-    
-    if(!this[target].isReserved(event)) this.give(this[target].any,arguments);
+    give(event,data,this);
+    give(this[target].any.give,arguments,this);
   }},
   
-  throw: {value: function(event,error){
+  giveError: {value: function(event,error){
     var res;
     
     event = this[target].compute(event);
+    if(this[target].isReserved(event)) return;
+    
     res = this[target][resolver][event];
     
     if(res && !res.yielded.done){
@@ -55,27 +63,33 @@ Object.defineProperties(Emitter.prototype,bag = {
       res.reject(error);
     }
     
-    this.give(this[target].anyThrow,arguments);
+    give(this[target].any.giveError,arguments,this);
   }},
   
   set: {value: function(event,data){
     event = this[target].compute(event);
+    if(this[target].isReserved(event)) return;
+    
     (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).accept(data);
     
-    this.give(this[target].anySet,arguments);
+    give(this[target].any.set,arguments,this);
   }},
   
   setError: {value: function(event,error){
     event = this[target].compute(event);
+    if(this[target].isReserved(event)) return;
+    
     (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).reject(error);
     
-    this.give(this[target].anySetError,arguments);
+    give(this[target].any.setError,arguments,this);
   }},
   
   unset: {value: function(event){
     var res;
     
     event = this[target].compute(event);
+    if(this[target].isReserved(event)) return;
+    
     res = this[target][resolver][event];
     
     if(res && res.yielded.done){
@@ -83,7 +97,7 @@ Object.defineProperties(Emitter.prototype,bag = {
       delete this[target][nextResolver][event];
     }
     
-    this.give(this[target].anyUnset,arguments);
+    give(this[target].any.unset,arguments,this);
   }},
   
   sun: {value: function(state1,state2){
@@ -92,13 +106,18 @@ Object.defineProperties(Emitter.prototype,bag = {
   }},
   
   syn: {value: function(from,to){
+    if(this[target].isReserved(from)) return;
+    if(this[target].isReserved(to)) return;
+    
     this[target][syn][from] = to;
-    this.give(this[target].anySyn,arguments);
+    give(this[target].any.syn,arguments,this);
   }},
   
   unsyn: {value: function(from){
+    if(this[target].isReserved(from)) return;
+    
     delete this[target][syn][from];
-    this.give(this[target].anyUnsyn,arguments);
+    give(this[target].any.unsyn,arguments,this);
   }}
   
 });
@@ -144,6 +163,44 @@ Emitter.Target = Target = function Target(prop){
   this[nextResolver] = {};
 };
 
+(function(){
+  var keys,i,j;
+  
+  any = {
+    until: Su(),
+    give: Su(),
+    giveError: Su(),
+    set: Su(),
+    setError: Su(),
+    unset: Su(),
+    syn: Su(),
+    unsyn: Su()
+  };
+  
+  Object.freeze(any);
+  
+  keys = Object.keys(any);
+  for(j = 0;j < keys.length;j++){
+    i = keys[j];
+    reserved[any[i]] = true;
+  }
+  
+})();
+
+function until(that,event,prop,args){
+  var res;
+  
+  event = that.compute(event);
+  
+  res = that[prop][event];
+  if(res) return res.yielded;
+  
+  res = that[prop][event] = new Resolver();
+  if(event != that.any.until) give(that.any.until,args,that[emitter]);
+  
+  return res.yielded;
+}
+
 Object.defineProperties(Target.prototype,{
   
   compute: {value: function(event){
@@ -156,32 +213,14 @@ Object.defineProperties(Target.prototype,{
   }},
   
   until: {value: function(event){
-    var res;
-    
-    event = this.compute(event);
-    
-    res = this[resolver][event];
-    if(res) return res.yielded;
-    
-    res = this[resolver][event] = new Resolver();
-    this[emitter].give(this.event,event);
-    
-    return res.yielded;
+    return until(this,this.compute(event),resolver,arguments);
   }},
   
   untilNext: {value: function(event){
-    var res;
-    
-    if(this.isNot(event)) return this.until(event);
     event = this.compute(event);
     
-    res = this[nextResolver][event];
-    if(res) return res.yielded;
-    
-    res = this[nextResolver][event] = new Resolver();
-    this[emitter].give(this.event,event);
-    
-    return res.yielded;
+    if(this[resolver][event] && this[resolver][event].yielded.accepted) return until(this,event,nextResolver,arguments);
+    return until(this,event,resolver,arguments);
   }},
   
   listeners: {value: function(event){
@@ -235,29 +274,13 @@ Object.defineProperties(Target.prototype,{
     return cbc;
   }},
   
-  event: {value: Su()},
-  any: {value: Su()},
-  anySet: {value: Su()},
-  anySetError: {value: Su()},
-  anyUnset: {value: Su()},
-  anyThrow: {value: Su()},
-  anySyn: {value: Su()},
-  anyUnsyn: {value: Su()},
+  any: {value: any},
   
   isReserved: {value: function(event){
     return !!reserved[event];
   }}
   
 });
-
-reserved[Target.prototype.any] = true;
-reserved[Target.prototype.anySet] = true;
-reserved[Target.prototype.anySetError] = true;
-reserved[Target.prototype.anyUnset] = true;
-reserved[Target.prototype.anyThrow] = true;
-reserved[Target.prototype.anySyn] = true;
-reserved[Target.prototype.anyUnsyn] = true;
-reserved[Target.prototype.event] = true;
 
 // Hybrid
 
