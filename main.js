@@ -106,8 +106,25 @@ Object.defineProperties(Emitter.prototype,bag = {
   }},
   
   syn: {value: function(from,to){
+    var fr,tr;
+    
     if(this[target].isReserved(from)) return;
     if(this[target].isReserved(to)) return;
+    if(this[target][syn][from] == to) return;
+    
+    if(fr = this[target][resolver][from]){
+      if(tr = this[target][resolver][to]) fr.bind(tr.yielded);
+      else this[target][resolver][to] = fr;
+      
+      delete this[target][resolver][from];
+    }
+    
+    if(fr = this[target][nextResolver][from]){
+      if(tr = this[target][nextResolver][to]) fr.bind(tr.yielded);
+      else this[target][nextResolver][to] = fr;
+      
+      delete this[target][nextResolver][from];
+    }
     
     this[target][syn][from] = to;
     give(this[target].any.syn,[from,to],this);
