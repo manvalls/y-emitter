@@ -1,6 +1,6 @@
 {
   "name": "y-emitter",
-  "version": "5.0.2",
+  "version": "6.0.0",
   "description": "Yielding emitter",
   "main": "main.js",
   "dependencies": {
