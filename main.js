@@ -27,13 +27,54 @@ module.exports = Emitter = function Emitter(Constructor){
 };
 
 function give(event,data,that){
-  var res;
+  var res,e;
+  
+  if(e = that[target][syn][event]) give(e,data,that);
   
   res = that[target][resolver][event];
-  
   if(res && !res.yielded.done){
     delete that[target][resolver][event];
     res.accept(data);
+  }
+  
+}
+
+function giveError(event,error,that){
+  var res,e;
+  
+  if(e = that[target][syn][event]) giveError(e,error,that);
+  
+  res = that[target][resolver][event];
+  if(res && !res.yielded.done){
+    delete that[target][resolver][event];
+    res.reject(error);
+  }
+  
+}
+
+function _set(event,data,that){
+  var e;
+  
+  if(e = that[target][syn][event]) _set(e,data,that);
+  (that[target][resolver][event] = that[target][resolver][event] || new Resolver()).accept(data);
+}
+
+function _setError(event,error,that){
+  var e;
+  
+  if(e = that[target][syn][event]) _setError(e,error,that);
+  (that[target][resolver][event] = that[target][resolver][event] || new Resolver()).reject(error);
+}
+
+function unset(event,that){
+  var res,e;
+  
+  if(e = that[target][syn][event]) unset(e,that);
+  
+  res = that[target][resolver][event];
+  if(res && res.yielded.done){
+    that[target][resolver][event] = that[target][nextResolver][event];
+    delete that[target][nextResolver][event];
   }
   
 }
@@ -43,7 +84,6 @@ Object.defineProperties(Emitter.prototype,bag = {
   target: {get: function(){ return this[target]; }},
   
   give: {value: function(event,data){
-    event = this[target].compute(event);
     if(this[target].isReserved(event)) return;
     
     give(event,data,this);
@@ -51,52 +91,32 @@ Object.defineProperties(Emitter.prototype,bag = {
   }},
   
   giveError: {value: function(event,error){
-    var res;
-    
-    event = this[target].compute(event);
     if(this[target].isReserved(event)) return;
     
-    res = this[target][resolver][event];
-    
-    if(res && !res.yielded.done){
-      delete this[target][resolver][event];
-      res.reject(error);
-    }
-    
+    giveError(event,error,this);
     give(this[target].any.giveError,[event,error],this);
   }},
   
   set: {value: function(event,data){
-    event = this[target].compute(event);
     if(this[target].isReserved(event)) return;
     
-    (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).accept(data);
-    
+    _set(event,data,this);
     give(this[target].any.set,[event,data],this);
   }},
   
   setError: {value: function(event,error){
-    event = this[target].compute(event);
     if(this[target].isReserved(event)) return;
     
-    (this[target][resolver][event] = this[target][resolver][event] || new Resolver()).reject(error);
-    
+    _setError(event,error,this);
     give(this[target].any.setError,[event,error],this);
   }},
   
   unset: {value: function(event){
     var res;
     
-    event = this[target].compute(event);
     if(this[target].isReserved(event)) return;
     
-    res = this[target][resolver][event];
-    
-    if(res && res.yielded.done){
-      this[target][resolver][event] = this[target][nextResolver][event];
-      delete this[target][nextResolver][event];
-    }
-    
+    unset(event,this);
     give(this[target].any.unset,[event],this);
   }},
   
@@ -110,21 +130,6 @@ Object.defineProperties(Emitter.prototype,bag = {
     
     if(this[target].isReserved(from)) return;
     if(this[target].isReserved(to)) return;
-    if(this[target][syn][from] == to) return;
-    
-    if(fr = this[target][resolver][from]){
-      if(tr = this[target][resolver][to]) fr.bind(tr.yielded);
-      else this[target][resolver][to] = fr;
-      
-      delete this[target][resolver][from];
-    }
-    
-    if(fr = this[target][nextResolver][from]){
-      if(tr = this[target][nextResolver][to]) fr.bind(tr.yielded);
-      else this[target][nextResolver][to] = fr;
-      
-      delete this[target][nextResolver][from];
-    }
     
     this[target][syn][from] = to;
     give(this[target].any.syn,[from,to],this);
@@ -204,68 +209,54 @@ Emitter.Target = Target = function Target(prop){
   
 })();
 
-function until(that,event,prop,oe){
+function until(that,event,prop){
   var res;
   
   res = that[prop][event];
   if(res) return res.yielded;
   
   res = that[prop][event] = new Resolver();
-  if(event != that.any.until) give(that.any.until,[oe],that[emitter]);
+  if(event != that.any.until) give(that.any.until,[event],that[emitter]);
   
   return res.yielded;
 }
 
 Object.defineProperties(Target.prototype,{
   
-  compute: {value: function(event){
-    while(this[syn].hasOwnProperty(event)) event = this[syn][event];
-    return event;
-  }},
-  
   walk: {value: function(generator,args){
     walk(generator,args,this);
   }},
   
   until: {value: function(event){
-    return until(this,this.compute(event),resolver,event);
+    return until(this,event,resolver);
   }},
   
   untilNext: {value: function(event){
-    var oe = event;
-    
-    event = this.compute(event);
-    
-    if(this[resolver][event] && this[resolver][event].yielded.accepted) return until(this,event,nextResolver,oe);
-    return until(this,event,resolver,oe);
+    if(this[resolver][event] && this[resolver][event].yielded.accepted) return until(this,event,nextResolver);
+    return until(this,event,resolver);
   }},
   
   listeners: {value: function(event){
     var res;
     
-    event = this.compute(event);
     if(res = this[resolver][event]) return res.yielded.listeners.value;
     
     return 0;
   }},
   
   is: {value: function(event){
-    event = this.compute(event);
     return !!(this[resolver][event] && this[resolver][event].yielded.accepted);
   }},
   
   isNot: {value: function(event){
-    event = this.compute(event);
     return !(this[resolver][event] && this[resolver][event].yielded.accepted);
   }},
   
   hasFailed: {value: function(event){
-    event = this.compute(event);
     return !!(this[resolver][event] && this[resolver][event].yielded.rejected);
   }},
   
   hasNotFailed: {value: function(event){
-    event = this.compute(event);
     return !(this[resolver][event] && this[resolver][event].yielded.rejected);
   }},
   
