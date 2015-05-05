@@ -237,11 +237,13 @@ Object.defineProperties(Target.prototype,{
   }},
   
   listeners: {value: function(event){
-    var res;
+    var n = 0,
+        res;
     
-    if(res = this[resolver][event]) return res.yielded.listeners.value;
+    do if(res = this[resolver][event]) n += res.yielded.listeners.value;
+    while(event = this[syn][event]);
     
-    return 0;
+    return n;
   }},
   
   is: {value: function(event){
