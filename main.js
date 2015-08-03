@@ -20,45 +20,45 @@ Emitter.prototype[define](bag = {
 
   get target(){ return this[target]; },
 
-  give: function(event,data){
+  give: function(event,data,lock){
     var res = this[target][resolver].get(event);
 
     if(res && !res.yielded.done){
       this[target][resolver].delete(event);
-      res.accept(data);
+      res.accept(data,lock);
     }
 
   },
 
-  throw: function(event,error){
+  throw: function(event,error,lock){
     var res = this[target][resolver].get(event);
 
     if(res && !res.yielded.done){
       this[target][resolver].delete(event);
-      res.reject(error);
+      res.reject(error,lock);
     }
 
   },
 
-  set: function(event,data){
+  set: function(event,data,lock){
     var res = this[target][resolver].get(event);
 
-    if(res) res.accept(data);
+    if(res) res.accept(data,lock);
     else{
       res = new Resolver();
-      res.accept(data);
+      res.accept(data,lock);
       this[target][resolver].set(event,res);
     }
 
   },
 
-  hold: function(event,error){
+  hold: function(event,error,lock){
     var res = this[target][resolver].get(event);
 
-    if(res) res.reject(error);
+    if(res) res.reject(error,lock);
     else{
       res = new Resolver();
-      res.reject(error);
+      res.reject(error,lock);
       this[target][resolver].set(event,res);
     }
 
