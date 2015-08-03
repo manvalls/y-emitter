@@ -4,9 +4,10 @@
   "description": "Yielding emitter",
   "main": "main.js",
   "dependencies": {
-    "u-su": "",
     "y-resolver": "",
-    "y-walk": ""
+    "y-walk": "",
+    "u-proto": "",
+    "detacher": ""
   },
   "repository": {
     "type": "git",
