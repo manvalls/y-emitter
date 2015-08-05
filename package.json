@@ -4,7 +4,7 @@
   "description": "Yielding emitter",
   "main": "main.js",
   "dependencies": {
-    "y-resolver": "",
+    "y-resolver": "^4",
     "y-walk": "",
     "u-proto": "",
     "detacher": ""
