@@ -2,18 +2,19 @@ var define = require('u-proto/define'),
     Resolver = require('y-resolver'),
     walk = require('y-walk'),
     Detacher = require('detacher'),
+    Setter = require('y-setter'),
 
-    resolver = Symbol(),
-    nextResolver = Symbol(),
+    resolvers = Symbol(),
+    status = Symbol(),
     target = Symbol(),
+    counters = Symbol(),
 
     bag;
 
 // Emitter
 
-function Emitter(Constructor){
-  Constructor = Constructor || Target;
-  this[target] = new Constructor();
+function Emitter(){
+  this[target] = new Target();
 };
 
 Emitter.prototype[define](bag = {
@@ -21,57 +22,43 @@ Emitter.prototype[define](bag = {
   get target(){ return this[target]; },
 
   give: function(event,data,lock){
-    var res = this[target][resolver].get(event);
+    var tg = this[target],
+        rss = tg[resolvers],
+        rs = rss.get(event),
+        r;
 
-    if(res && !res.yielded.done){
-      this[target][resolver].delete(event);
-      res.accept(data,lock);
+    if(rs){
+      if(lock) for(r of new Set(rs)) lock.take().listen(accept,[r,data,rs,rss,tg[counters],event]);
+      else for(r of new Set(rs)) accept(r,data,rs,rss,tg[counters],event);
     }
 
   },
 
   throw: function(event,error,lock){
-    var res = this[target][resolver].get(event);
+    var tg = this[target],
+        rss = tg[resolvers],
+        rs = rss.get(event),
+        r;
 
-    if(res && !res.yielded.done){
-      this[target][resolver].delete(event);
-      res.reject(error,lock);
+    if(rs){
+      if(lock) for(r of new Set(rs)) lock.take().listen(reject,[r,error,rs,rss,tg[counters],event]);
+      else for(r of new Set(rs)) reject(r,error,rs,rss,tg[counters],event);
     }
 
   },
 
   set: function(event,data,lock){
-    var res = this[target][resolver].get(event);
-
-    if(res) res.accept(data,lock);
-    else{
-      res = new Resolver();
-      res.accept(data,lock);
-      this[target][resolver].set(event,res);
-    }
-
+    this[target][status].set(event,[true,data,lock]);
+    this.give(event,data,lock);
   },
 
   hold: function(event,error,lock){
-    var res = this[target][resolver].get(event);
-
-    if(res) res.reject(error,lock);
-    else{
-      res = new Resolver();
-      res.reject(error,lock);
-      this[target][resolver].set(event,res);
-    }
-
+    this[target][status].set(event,[false,error,lock]);
+    this.throw(event,data,lock);
   },
 
   unset: function(event){
-    var res = this[target][resolver].get(event);
-
-    if(res && res.yielded.done){
-      this[target][resolver].set(event,this[target][nextResolver].get(event));
-      this[target][nextResolver].delete(event);
-    }
-
+    this[target][status].delete(event);
   },
 
   sun: function(state1,state2){
@@ -81,76 +68,116 @@ Emitter.prototype[define](bag = {
 
 });
 
+// - utils
+
+function accept(r,data,rs,rss,cs,event){
+  if(!rs.has(r)) return;
+
+  r.accept(data);
+  rs.delete(r);
+  if(!rs.size){
+    rss.delete(event);
+    cs.delete(event);
+  }
+
+}
+
+function reject(r,error,rs,rss,cs,event){
+  if(!rs.has(r)) return;
+
+  r.reject(error);
+  rs.delete(r);
+  if(!rs.size){
+    rss.delete(event);
+    cs.delete(event);
+  }
+
+}
+
 // Target
 
 function Target(prop){
-  if(this[resolver]) return;
+  if(this[resolvers]) return;
 
   if(prop){
     this[prop] = Object.create(Emitter.prototype);
     this[prop][target] = this;
   }
 
-  this[resolver] = new Map();
-  this[nextResolver] = new Map();
+  this[resolvers] = new Map();
+  this[status] = new Map();
+  this[counters] = new Map();
 }
 
 Target.prototype[define]({
 
   until: function(event){
-    var res;
+    var st = this[status].get(event),
+        rss = this[resolvers],
+        r = getR(this,event);
 
-    res = this[resolver].get(event);
-    if(res) return res.yielded;
+    if(st){
 
-    this[resolver].set(event,res = new Resolver());
-    return res.yielded;
+      if(st[0]){
+
+        if(st[2]){
+          listen(rss,event,r);
+          st[2].take().listen(accept,[r,data,rss.get(event),rss,this[counters],event]);
+          return r.yielded;
+        }
+
+        r.accept(st[1]);
+        return r.yielded;
+
+      }
+
+
+      if(st[2]){
+        listen(rss,event,r);
+        st[2].take().listen(reject,[r,data,rss.get(event),rss,this[counters],event]);
+        return r.yielded;
+      }
+
+      r.reject(st[1]);
+      return r.yielded;
+
+    }
+
+    listen(rss,event,r);
+    return r.yielded;
   },
 
   untilNext: function(event){
-    var res;
+    var rss = this[resolvers],
+        r = getR(this,event);
 
-    res = this[resolver].get(event);
-    if(!(res && res.yielded.done)) return this.until(event);
-
-    res = this[nextResolver].get(event);
-    if(res) return res.yielded;
-
-    this[nextResolver].set(event,res = new Resolver());
-    return res.yielded;
+    listen(rss,event,r);
+    return r.yielded;
   },
 
   listened: function(event){
-    var n = 0,
-        res;
-
-    res = this[resolver].get(event);
-    if(res) n += res.yielded.listeners.value;
-
-    res = this[nextResolver].get(event);
-    if(res) n += res.yielded.listeners.value;
-
-    return n > 0;
+    var c = this[counters].get(event);
+    return c && c.value > 0;
   },
 
   is: function(event){
-    var res = this[resolver].get(event);
-    return !!(res && res.yielded.accepted);
+    var st = this[status].get(event);
+    return st && st[0];
   },
 
   isNot: function(event){
-    var res = this[resolver].get(event);
-    return !(res && res.yielded.accepted);
+    var st = this[status].get(event);
+    return !(st && st[0]);
   },
 
   hasFailed: function(event){
-    var res = this[resolver].get(event);
-    return !!(res && res.yielded.rejected);
+    var st = this[status].get(event);
+    return st && !st[0];
   },
 
   hasNotFailed: function(event){
-    var res = this[resolver].get(event);
-    return !(res && res.yielded.rejected);
+    var st = this[status].get(event);
+    return !st || st[0];
   },
 
   walk: function(generator,args){
@@ -180,12 +207,28 @@ Target.prototype[define]({
   },
 
   events: function(){
-    return this[resolver].keys();
+    return this[resolvers].keys();
   }
 
 });
 
-// - on
+// - utils
+
+function listen(rss,event,r){
+  var rs = rss.get(event);
+
+  if(!rs) rss.set(event,rs = new Set());
+  rs.add(r);
+}
+
+function getR(yd,event){
+  var c = yd[counters].get(event);
+
+  if(!c) yd[counters].set(event,c = new Setter());
+  return new Resolver(c);
+}
+
+// -- on
 
 function* onLoop(d,args,event,listener){
 
@@ -197,7 +240,7 @@ function* onLoop(d,args,event,listener){
 
 }
 
-// - once
+// -- once
 
 function* onceLoop(d,args,event,listener){
   args[0] = yield this.until(event);
