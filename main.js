@@ -187,10 +187,11 @@ Target.prototype[define]({
   on: function(){
     var event = arguments[0],
         listener = arguments[1],
-        d = new Detacher();
+        dArgs = [],
+        d = new Detacher(pauseIt,dArgs);
 
     arguments[1] = d;
-    walk(onLoop,[d,arguments,event,listener],this);
+    walk(onLoop,[arguments,event,listener,this,dArgs]);
 
     return d;
   },
@@ -198,10 +199,11 @@ Target.prototype[define]({
   once: function(){
     var event = arguments[0],
         listener = arguments[1],
-        d = new Detacher();
+        dArgs = [],
+        d = new Detacher(pauseIt,dArgs);
 
     arguments[1] = d;
-    walk(onceLoop,[d,arguments,event,listener],this);
+    walk(onceLoop,[arguments,event,listener,this,dArgs]);
 
     return d;
   },
@@ -228,23 +230,30 @@ function getR(yd,event){
   return new Resolver(c);
 }
 
+function pauseIt(w){
+  w.pause();
+}
+
 // -- on
 
-function* onLoop(d,args,event,listener){
+function* onLoop(args,event,listener,yd,dArgs){
+  dArgs[0] = this;
 
-  args[0] = yield this.until(event);
-  while(d.active){
-    walk(listener,args,this);
-    args[0] = yield this.untilNext(event);
+  args[0] = yield yd.until(event);
+  while(true){
+    walk(listener,args,yd);
+    args[0] = yield yd.untilNext(event);
   }
 
 }
 
 // -- once
 
-function* onceLoop(d,args,event,listener){
-  args[0] = yield this.until(event);
-  if(d.active) walk(listener,args,this);
+function* onceLoop(args,event,listener,yd,dArgs){
+  dArgs[0] = this;
+
+  args[0] = yield yd.until(event);
+  walk(listener,args,yd);
 }
 
 // HybridTarget
