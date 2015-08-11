@@ -28,7 +28,7 @@ Emitter.prototype[define](bag = {
         r;
 
     if(rs){
-      if(lock) for(r of new Set(rs)) lock.take().listen(accept,[r,data,rs,rss,tg[counters],event]);
+      if(lock) for(r of new Set(rs)) lock.take().listen(accept,[r,data,rs,rss,tg[counters],event,lock]);
       else for(r of new Set(rs)) accept(r,data,rs,rss,tg[counters],event);
     }
 
@@ -41,7 +41,7 @@ Emitter.prototype[define](bag = {
         r;
 
     if(rs){
-      if(lock) for(r of new Set(rs)) lock.take().listen(reject,[r,error,rs,rss,tg[counters],event]);
+      if(lock) for(r of new Set(rs)) lock.take().listen(reject,[r,error,rs,rss,tg[counters],event,lock]);
       else for(r of new Set(rs)) reject(r,error,rs,rss,tg[counters],event);
     }
 
@@ -70,8 +70,8 @@ Emitter.prototype[define](bag = {
 
 // - utils
 
-function accept(r,data,rs,rss,cs,event){
-  if(!rs.has(r)) return;
+function accept(r,data,rs,rss,cs,event,lock){
+  if(!rs.has(r)) return lock ? lock.give() : null;
 
   r.accept(data);
   rs.delete(r);
@@ -82,8 +82,8 @@ function accept(r,data,rs,rss,cs,event){
 
 }
 
-function reject(r,error,rs,rss,cs,event){
-  if(!rs.has(r)) return;
+function reject(r,error,rs,rss,cs,event,lock){
+  if(!rs.has(r)) return lock ? lock.give() : null;
 
   r.reject(error);
   rs.delete(r);
