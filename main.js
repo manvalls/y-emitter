@@ -5,6 +5,7 @@ var define = require('u-proto/define'),
     Setter = require('y-setter'),
 
     resolvers = Symbol(),
+    emitter = Symbol(),
     status = Symbol(),
     target = Symbol(),
     counters = Symbol(),
@@ -15,6 +16,7 @@ var define = require('u-proto/define'),
 
 function Emitter(){
   this[target] = new Target();
+  this[target][emitter] = this;
 };
 
 Emitter.prototype[define](bag = {
@@ -28,8 +30,8 @@ Emitter.prototype[define](bag = {
         r;
 
     if(rs){
-      if(lock) for(r of new Set(rs)) lock.take().listen(accept,[r,data,rs,rss,tg[counters],event,lock]);
-      else for(r of new Set(rs)) accept(r,data,rs,rss,tg[counters],event);
+      if(lock) for(r of new Set(rs)) lock.take().listen(accept,[r,data,rs,rss,tg[counters],event,lock,this,tg.eventIgnored]);
+      else for(r of new Set(rs)) accept(r,data,rs,rss,tg[counters],event,null,this,tg.eventIgnored);
     }
 
   },
@@ -41,8 +43,8 @@ Emitter.prototype[define](bag = {
         r;
 
     if(rs){
-      if(lock) for(r of new Set(rs)) lock.take().listen(reject,[r,error,rs,rss,tg[counters],event,lock]);
-      else for(r of new Set(rs)) reject(r,error,rs,rss,tg[counters],event);
+      if(lock) for(r of new Set(rs)) lock.take().listen(reject,[r,error,rs,rss,tg[counters],event,lock,this,tg.eventIgnored]);
+      else for(r of new Set(rs)) reject(r,error,rs,rss,tg[counters],event,null,this,tg.eventIgnored);
     }
 
   },
@@ -70,7 +72,7 @@ Emitter.prototype[define](bag = {
 
 // - utils
 
-function accept(r,data,rs,rss,cs,event,lock){
+function accept(r,data,rs,rss,cs,event,lock,e,eventIgnored){
   if(!rs.has(r)) return lock ? lock.give() : null;
 
   r.accept(data);
@@ -78,6 +80,7 @@ function accept(r,data,rs,rss,cs,event,lock){
   if(!rs.size){
     rss.delete(event);
     cs.delete(event);
+    if(typeof event == 'string') e.give(eventIgnored,event);
   }
 
 }
@@ -90,6 +93,7 @@ function reject(r,error,rs,rss,cs,event,lock){
   if(!rs.size){
     rss.delete(event);
     cs.delete(event);
+    if(typeof event == 'string') e.give(eventIgnored,event);
   }
 
 }
@@ -100,7 +104,7 @@ function Target(prop){
   if(this[resolvers]) return;
 
   if(prop){
-    this[prop] = Object.create(Emitter.prototype);
+    this[prop] = this[emitter] = Object.create(Emitter.prototype);
     this[prop][target] = this;
   }
 
@@ -121,7 +125,7 @@ Target.prototype[define]({
       if(st[0]){
 
         if(st[2]){
-          listen(rss,event,r);
+          listen(rss,event,r,this[emitter],this.eventListened);
           st[2].take().listen(accept,[r,data,rss.get(event),rss,this[counters],event]);
           return r.yielded;
         }
@@ -133,7 +137,7 @@ Target.prototype[define]({
 
 
       if(st[2]){
-        listen(rss,event,r);
+        listen(rss,event,r,this[emitter],this.eventListened);
         st[2].take().listen(reject,[r,data,rss.get(event),rss,this[counters],event]);
         return r.yielded;
       }
@@ -143,7 +147,7 @@ Target.prototype[define]({
 
     }
 
-    listen(rss,event,r);
+    listen(rss,event,r,this[emitter],this.eventListened);
     return r.yielded;
   },
 
@@ -151,7 +155,7 @@ Target.prototype[define]({
     var rss = this[resolvers],
         r = getR(this,event);
 
-    listen(rss,event,r);
+    listen(rss,event,r,this[emitter],this.eventListened);
     return r.yielded;
   },
 
@@ -209,18 +213,25 @@ Target.prototype[define]({
   },
 
   events: function(){
-    return this[resolvers].keys();
-  }
+    return strings(this[resolvers].keys());
+  },
+
+  eventListened: Symbol(),
+  eventIgnored: Symbol()
 
 });
 
 // - utils
 
-function listen(rss,event,r){
+function listen(rss,event,r,e,eventListened){
   var rs = rss.get(event);
 
-  if(!rs) rss.set(event,rs = new Set());
-  rs.add(r);
+  if(!rs){
+    rss.set(event,rs = new Set());
+    rs.add(r);
+    if(typeof event == 'string') e.give(eventListened,event);
+  }else rs.add(r);
+
 }
 
 function getR(yd,event){
@@ -232,6 +243,12 @@ function getR(yd,event){
 
 function pauseIt(w){
   w.pause();
+}
+
+function* strings(it){
+  var v;
+
+  for(v of it) if(typeof v == 'string') yield v;
 }
 
 // -- on
@@ -260,6 +277,7 @@ function* onceLoop(args,event,listener,yd,dArgs){
 
 function HybridTarget(){
   this[target] = this;
+  this[emitter] = this;
   Target.call(this);
 }
 
