@@ -2,15 +2,17 @@ var define = require('u-proto/define'),
     Resolver = require('y-resolver'),
     walk = require('y-walk'),
     Detacher = require('detacher'),
-    Setter = require('y-setter'),
 
-    resolvers = Symbol(),
-    emitter = Symbol(),
+    resolver = Symbol(),
     status = Symbol(),
     target = Symbol(),
-    counters = Symbol(),
+    emitter = Symbol(),
+    current = Symbol(),
 
-    bag;
+    isYd = Resolver.isYd,
+    defer = Resolver.defer,
+
+    bag,call;
 
 // Emitter
 
@@ -23,40 +25,54 @@ Emitter.prototype[define](bag = {
 
   get target(){ return this[target]; },
 
-  give: function(event,data,lock){
+  give: function(event,data){
     var tg = this[target],
-        rss = tg[resolvers],
-        rs = rss.get(event),
-        r;
+        rs = tg[resolver],
+        res = rs.get(event),
+        c;
 
-    if(rs){
-      if(lock) for(r of new Set(rs)) lock.take().listen(accept,[r,data,rs,rss,tg[counters],event,lock,this,tg.eventIgnored]);
-      else for(r of new Set(rs)) accept(r,data,rs,rss,tg[counters],event,null,this,tg.eventIgnored);
+    if(res){
+      rs.delete(event);
+
+      if(typeof event == 'string'){
+        c = tg[current];
+
+        c[event] = c[event] || 0;
+        c[event]++;
+
+        res.accept(data);
+
+        if(!--c[event]) delete c[event];
+
+        if(!rs.has(event)) this.give(tg.eventIgnored,event);
+      }else res.accept(data);
+
     }
 
   },
 
-  throw: function(event,error,lock){
+  throw: function(event,error){
     var tg = this[target],
-        rss = tg[resolvers],
-        rs = rss.get(event),
-        r;
+        rs = tg[resolver],
+        res = rs.get(event);
 
-    if(rs){
-      if(lock) for(r of new Set(rs)) lock.take().listen(reject,[r,error,rs,rss,tg[counters],event,lock,this,tg.eventIgnored]);
-      else for(r of new Set(rs)) reject(r,error,rs,rss,tg[counters],event,null,this,tg.eventIgnored);
+    if(res){
+      rs.delete(event);
+      res.reject(error);
+
+      if(!rs.has(event) && typeof event == 'string') this.give(tg.eventIgnored,event);
     }
 
   },
 
-  set: function(event,data,lock){
-    this[target][status].set(event,[true,data,lock]);
-    this.give(event,data,lock);
+  set: function(event,data){
+    this[target][status].set(event,Resolver.accept(data));
+    this.give(event,data);
   },
 
-  hold: function(event,error,lock){
-    this[target][status].set(event,[false,error,lock]);
-    this.throw(event,data,lock);
+  hold: function(event,error){
+    this[target][status].set(event,Resolver.reject(error));
+    this.throw(event,error);
   },
 
   unset: function(event){
@@ -70,118 +86,65 @@ Emitter.prototype[define](bag = {
 
 });
 
-// - utils
-
-function accept(r,data,rs,rss,cs,event,lock,e,eventIgnored){
-  if(!rs.has(r)) return lock ? lock.give() : null;
-
-  r.accept(data);
-  rs.delete(r);
-  if(!rs.size){
-    rss.delete(event);
-    cs.delete(event);
-    if(typeof event == 'string') e.give(eventIgnored,event);
-  }
-
-}
-
-function reject(r,error,rs,rss,cs,event,lock){
-  if(!rs.has(r)) return lock ? lock.give() : null;
-
-  r.reject(error);
-  rs.delete(r);
-  if(!rs.size){
-    rss.delete(event);
-    cs.delete(event);
-    if(typeof event == 'string') e.give(eventIgnored,event);
-  }
-
-}
-
 // Target
 
 function Target(prop){
-  if(this[resolvers]) return;
+  if(this[resolver]) return;
 
   if(prop){
-    this[prop] = this[emitter] = Object.create(Emitter.prototype);
-    this[prop][target] = this;
+    this[emitter] = this[prop] = Object.create(Emitter.prototype);
+    this[emitter][target] = this;
   }
 
-  this[resolvers] = new Map();
+  this[resolver] = new Map();
   this[status] = new Map();
-  this[counters] = new Map();
+  this[current] = Object.create(null);
 }
 
 Target.prototype[define]({
 
   until: function(event){
-    var st = this[status].get(event),
-        rss = this[resolvers],
-        r = getR(this,event);
+    var yd = this[status].get(event);
 
-    if(st){
-
-      if(st[0]){
-
-        if(st[2]){
-          listen(rss,event,r,this[emitter],this.eventListened);
-          st[2].take().listen(accept,[r,data,rss.get(event),rss,this[counters],event]);
-          return r.yielded;
-        }
-
-        r.accept(st[1]);
-        return r.yielded;
-
-      }
-
-
-      if(st[2]){
-        listen(rss,event,r,this[emitter],this.eventListened);
-        st[2].take().listen(reject,[r,data,rss.get(event),rss,this[counters],event]);
-        return r.yielded;
-      }
-
-      r.reject(st[1]);
-      return r.yielded;
-
-    }
-
-    listen(rss,event,r,this[emitter],this.eventListened);
-    return r.yielded;
+    if(yd) return yd;
+    return this.untilNext(event);
   },
 
   untilNext: function(event){
-    var rss = this[resolvers],
-        r = getR(this,event);
+    var rs = this[resolver],
+        res = rs.get(event);
 
-    listen(rss,event,r,this[emitter],this.eventListened);
-    return r.yielded;
+    if(res) return res.yielded;
+
+    rs.set(event,res = new Resolver());
+    if(typeof event == 'string' && !this[current][event])
+      this[emitter].give(this.eventListened,event);
+
+    return res.yielded;
   },
 
   listened: function(event){
-    var c = this[counters].get(event);
-    return c && c.value > 0;
+    return this[resolver].has(event);
   },
 
   is: function(event){
-    var st = this[status].get(event);
-    return st && st[0];
+    var yd = this[status].get(event);
+    return !!(yd && yd.accepted);
   },
 
   isNot: function(event){
-    var st = this[status].get(event);
-    return !(st && st[0]);
+    var yd = this[status].get(event);
+    return !(yd && yd.accepted);
   },
 
   hasFailed: function(event){
-    var st = this[status].get(event);
-    return st && !st[0];
+    var yd = this[status].get(event);
+    return !!(yd && yd.rejected);
   },
 
   hasNotFailed: function(event){
-    var st = this[status].get(event);
-    return !st || st[0];
+    var yd = this[status].get(event);
+    return !(yd && yd.accepted);
   },
 
   walk: function(generator,args){
@@ -213,7 +176,7 @@ Target.prototype[define]({
   },
 
   events: function(){
-    return strings(this[resolvers].keys());
+    return strings(this[resolver].keys());
   },
 
   eventListened: Symbol(),
@@ -223,54 +186,102 @@ Target.prototype[define]({
 
 // - utils
 
-function listen(rss,event,r,e,eventListened){
-  var rs = rss.get(event);
-
-  if(!rs){
-    rss.set(event,rs = new Set());
-    rs.add(r);
-    if(typeof event == 'string') e.give(eventListened,event);
-  }else rs.add(r);
-
-}
-
-function getR(yd,event){
-  var c = yd[counters].get(event);
-
-  if(!c) yd[counters].set(event,c = new Setter());
-  return new Resolver(c);
-}
-
 function pauseIt(w){
   w.pause();
 }
 
 function* strings(it){
-  var v;
-
-  for(v of it) if(typeof v == 'string') yield v;
+  for(var v of it) if(typeof v == 'string') yield v;
 }
+
+call = walk.wrap(function*(args,listener,tg){
+  var e = args[0];
+
+  try{
+    if(e && (e[isYd] || e[defer])) args[0] = yield e;
+    walk(listener,args,tg);
+  }catch(e){ }
+
+});
 
 // -- on
 
-function* onLoop(args,event,listener,yd,dArgs){
+function* onLoop(args,event,listener,tg,dArgs){
   dArgs[0] = this;
 
-  args[0] = yield yd.until(event);
+  try{
+    args[0] = yield tg.until(event);
+    call(args,listener,tg);
+  }catch(e){}
+
   while(true){
-    walk(listener,args,yd);
-    args[0] = yield yd.untilNext(event);
+    try{
+      args[0] = yield tg.untilNext(event);
+      call(args,listener,tg);
+    }catch(e){}
+  }
+
+}
+
+function* onErrorLoop(args,event,listener,tg,dArgs){
+  dArgs[0] = this;
+
+  try{ yield tg.until(event); }
+  catch(e){
+    args[0] = e;
+    call(args,listener,tg);
+  }
+
+  while(true){
+    try{ yield tg.untilNext(event); }
+    catch(e){
+      args[0] = e;
+      call(args,listener,tg);
+    }
   }
 
 }
 
 // -- once
 
-function* onceLoop(args,event,listener,yd,dArgs){
+function* onceLoop(args,event,listener,tg,dArgs){
   dArgs[0] = this;
 
-  args[0] = yield yd.until(event);
-  walk(listener,args,yd);
+  try{
+    args[0] = yield tg.until(event);
+    call(args,listener,tg);
+  }catch(e){
+    loop: while(true){
+      try{
+        args[0] = yield tg.untilNext(event);
+        call(args,listener,tg);
+        break loop;
+      }catch(e){}
+    }
+  }
+
+}
+
+function* onceErrorLoop(args,event,listener,tg,dArgs){
+  dArgs[0] = this;
+
+  try{
+    yield tg.until(event);
+
+    loop: while(true){
+      try{ yield tg.untilNext(event); }
+      catch(e){
+        args[0] = e;
+        call(args,listener,tg);
+        break loop;
+      }
+    }
+
+  }catch(e){
+    args[0] = e;
+    call(args,listener,tg);
+  }
+
 }
 
 // HybridTarget
