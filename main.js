@@ -1,5 +1,6 @@
 var define = require('u-proto/define'),
     Resolver = require('y-resolver'),
+    Yielded = Resolver.Yielded,
     walk = require('y-walk'),
     Detacher = require('detacher'),
 
@@ -8,9 +9,7 @@ var define = require('u-proto/define'),
     target = Symbol(),
     emitter = Symbol(),
     current = Symbol(),
-
-    isYd = Resolver.isYd,
-    defer = Resolver.defer,
+    deferrer = Yielded.deferrer,
 
     bag,call;
 
@@ -198,7 +197,7 @@ call = walk.wrap(function*(args,listener,tg){
   var e = args[0];
 
   try{
-    if(e && (e[isYd] || e[defer])) args[0] = yield e;
+    if(e && (Yielded.is(e) || e[deferrer])) args[0] = yield e;
     walk(listener,args,tg);
   }catch(e){ }
 
