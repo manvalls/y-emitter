@@ -4,11 +4,11 @@
   "description": "Yielding emitter",
   "main": "main.js",
   "dependencies": {
-    "y-resolver": "",
-    "y-walk": "",
-    "u-proto": "",
-    "detacher": "",
-    "y-setter": ""
+    "detacher": "^1.4.0",
+    "u-proto": "^5.4.0",
+    "y-resolver": "^6.1.0",
+    "y-setter": "^4.1.0",
+    "y-walk": "^10.0.0"
   },
   "repository": {
     "type": "git",
