@@ -197,7 +197,7 @@ call = walk.wrap(function*(args,listener,tg){
   var e = args[0];
 
   try{
-    if(e && (Yielded.is(e) || e[deferrer])) args[0] = yield e;
+    if(e && e[deferrer]) args[0] = yield e;
     walk(listener,args,tg);
   }catch(e){ }
 
