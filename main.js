@@ -9,9 +9,8 @@ var define = require('u-proto/define'),
     target = Symbol(),
     emitter = Symbol(),
     current = Symbol(),
-    deferrer = Yielded.deferrer,
 
-    bag,call;
+    bag;
 
 // Emitter
 
@@ -193,15 +192,10 @@ function* strings(it){
   for(var v of it) if(typeof v == 'string') yield v;
 }
 
-call = walk.wrap(function*(args,listener,tg){
-  var e = args[0];
-
-  try{
-    if(e && e[deferrer]) args[0] = yield e;
-    walk(listener,args,tg);
-  }catch(e){ }
-
-});
+function call(args,listener,tg){
+  try{ walk(listener,args,tg); }
+  catch(e){ }
+}
 
 // -- on
 
