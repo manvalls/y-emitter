@@ -49,28 +49,9 @@ Emitter.prototype[define](bag = {
 
   },
 
-  throw: function(event,error){
-    var tg = this[target],
-        rs = tg[resolver],
-        res = rs.get(event);
-
-    if(res){
-      rs.delete(event);
-      res.reject(error);
-
-      if(!rs.has(event) && typeof event == 'string') this.give(tg.eventIgnored,event);
-    }
-
-  },
-
   set: function(event,data){
     this[target][status].set(event,Resolver.accept(data));
     this.give(event,data);
-  },
-
-  hold: function(event,error){
-    this[target][status].set(event,Resolver.reject(error));
-    this.throw(event,error);
   },
 
   unset: function(event){
@@ -135,16 +116,6 @@ Target.prototype[define]({
     return !(yd && yd.accepted);
   },
 
-  hasFailed: function(event){
-    var yd = this[status].get(event);
-    return !!(yd && yd.rejected);
-  },
-
-  hasNotFailed: function(event){
-    var yd = this[status].get(event);
-    return !(yd && yd.accepted);
-  },
-
   walk: function(generator,args){
     walk(generator,args,this);
   },
@@ -200,37 +171,14 @@ function call(args,listener,tg){
 // -- on
 
 function* onLoop(args,event,listener,tg,dArgs){
-  dArgs[0] = this;
 
-  try{
-    args[0] = yield tg.until(event);
-    call(args,listener,tg);
-  }catch(e){}
+  dArgs[0] = this;
+  args[0] = yield tg.until(event);
+  call(args,listener,tg);
 
   while(true){
-    try{
-      args[0] = yield tg.untilNext(event);
-      call(args,listener,tg);
-    }catch(e){}
-  }
-
-}
-
-function* onErrorLoop(args,event,listener,tg,dArgs){
-  dArgs[0] = this;
-
-  try{ yield tg.until(event); }
-  catch(e){
-    args[0] = e;
+    args[0] = yield tg.untilNext(event);
     call(args,listener,tg);
-  }
-
-  while(true){
-    try{ yield tg.untilNext(event); }
-    catch(e){
-      args[0] = e;
-      call(args,listener,tg);
-    }
   }
 
 }
@@ -239,42 +187,8 @@ function* onErrorLoop(args,event,listener,tg,dArgs){
 
 function* onceLoop(args,event,listener,tg,dArgs){
   dArgs[0] = this;
-
-  try{
-    args[0] = yield tg.until(event);
-    call(args,listener,tg);
-  }catch(e){
-    loop: while(true){
-      try{
-        args[0] = yield tg.untilNext(event);
-        call(args,listener,tg);
-        break loop;
-      }catch(e){}
-    }
-  }
-
-}
-
-function* onceErrorLoop(args,event,listener,tg,dArgs){
-  dArgs[0] = this;
-
-  try{
-    yield tg.until(event);
-
-    loop: while(true){
-      try{ yield tg.untilNext(event); }
-      catch(e){
-        args[0] = e;
-        call(args,listener,tg);
-        break loop;
-      }
-    }
-
-  }catch(e){
-    args[0] = e;
-    call(args,listener,tg);
-  }
-
+  args[0] = yield tg.until(event);
+  call(args,listener,tg);
 }
 
 // HybridTarget
