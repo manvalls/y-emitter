@@ -24,34 +24,13 @@ Emitter.prototype[define](bag = {
   get target(){ return this[target]; },
 
   give: function(event,data){
-    var tg = this[target],
-        rs = tg[resolver],
-        res = rs.get(event),
-        c;
-
-    if(res){
-      rs.delete(event);
-
-      if(typeof event == 'string'){
-        c = tg[current];
-
-        c[event] = c[event] || 0;
-        c[event]++;
-
-        res.accept(data);
-
-        if(!--c[event]) delete c[event];
-
-        if(!rs.has(event)) this.give(tg.eventIgnored,event);
-      }else res.accept(data);
-
-    }
-
+    if(this.target.is(event)) return this.set(event,data);
+    giveIt(this,event,data);
   },
 
   set: function(event,data){
     this[target][status].set(event,Resolver.accept(data));
-    this.give(event,data);
+    giveIt(this,event,data);
   },
 
   unset: function(event){
@@ -64,6 +43,34 @@ Emitter.prototype[define](bag = {
   }
 
 });
+
+function giveIt(em,event,data){
+  var tg = em[target],
+      rs = tg[resolver],
+      res = rs.get(event),
+      c;
+
+  if(res){
+    rs.delete(event);
+
+    if(typeof event == 'string'){
+      c = tg[current];
+
+      c[event] = c[event] || 0;
+      c[event]++;
+
+      res.accept(data);
+
+      if(!--c[event]){
+        delete c[event];
+        if(!rs.has(event)) em.give(tg.eventIgnored,event);
+      }
+      
+    }else res.accept(data);
+
+  }
+
+}
 
 // Target
 
@@ -171,14 +178,16 @@ function call(args,listener,tg){
 // -- on
 
 function* onLoop(args,event,listener,tg,dArgs){
+  var yd;
 
   dArgs[0] = this;
   args[0] = yield tg.until(event);
-  call(args,listener,tg);
+  yd = tg.untilNext(event);
 
   while(true){
-    args[0] = yield tg.untilNext(event);
     call(args,listener,tg);
+    args[0] = yield yd;
+    yd = tg.untilNext(event);
   }
 
 }
@@ -203,20 +212,8 @@ HybridTarget.prototype = Object.create(Target.prototype);
 HybridTarget.prototype[define]('constructor',HybridTarget);
 HybridTarget.prototype[define](bag);
 
-// utils
-
-function chain(){
-  var last = arguments[arguments.length - 1][target],
-      i;
-
-  arguments[arguments.length - 1][target] = arguments[0][target];
-  for(i = 0;i < arguments.length - 2;i++) arguments[i][target] = arguments[i + 1][target];
-  arguments[arguments.length - 2][target] = last;
-}
-
 /*/ exports /*/
 
 module.exports = Emitter;
 Emitter.Target = Target;
 Emitter.Hybrid = HybridTarget;
-Emitter.chain = chain;
