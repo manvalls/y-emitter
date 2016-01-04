@@ -11,6 +11,9 @@ t('Events',function*(){
   yd = target.until(event);
   emitter.give(event,'bar');
   assert.strictEqual(yield yd,'bar');
+
+  emitter.queue(event,'foo');
+  assert.strictEqual(yield target.until(event),'foo');
 });
 
 t('States',function*(){
@@ -23,6 +26,9 @@ t('States',function*(){
 
   emitter.give('foo','foo');
   assert.strictEqual(yield target.until('foo'),'foo');
+
+  emitter.queue('foo','bar');
+  assert.strictEqual(yield target.until('foo'),'bar');
 
   emitter.sun('bar','foo');
   yield target.walk(function*(){
@@ -140,12 +146,13 @@ t('eventListened / eventIgnored',function(){
   assert(listened);
   assert(!ignored);
   assert(target.listened(event));
+  assert(!target.listened(Symbol()));
+
   for(e of target.events()) assert.strictEqual(e,event);
   assert.strictEqual(el,1);
   assert.strictEqual(ei,0);
 
   d.detach();
-  emitter.give(event,'foo');
   assert(!listened);
   assert(ignored);
   assert(!called);

@@ -10,7 +10,7 @@ var define = require('u-proto/define'),
     emitter = Symbol(),
     current = Symbol(),
 
-    bag;
+    bag,handleEvent;
 
 // Emitter
 
@@ -27,6 +27,12 @@ Emitter.prototype[define](bag = {
     if(this.target.is(event)) return this.set(event,data);
     giveIt(this,event,data);
   },
+
+  queue: walk.wrap(function*(event,data){
+    if(this.target.is(event)) return this.set(event,data);
+    yield this.target.until(event).listeners.gt(0);
+    giveIt(this,event,data);
+  }),
 
   set: function(event,data){
     this[target][status].set(event,Resolver.accept(data));
@@ -53,7 +59,7 @@ function giveIt(em,event,data){
   if(res){
     rs.delete(event);
 
-    if(typeof event == 'string'){
+    if(res.yielded.listeners.value > 0 && typeof event == 'string'){
       c = tg[current];
 
       c[event] = c[event] || 0;
@@ -63,7 +69,7 @@ function giveIt(em,event,data){
 
       if(!--c[event]){
         delete c[event];
-        if(!rs.has(event)) em.give(tg.eventIgnored,event);
+        if(!tg.listened(event)) em.give(tg.eventIgnored,event);
       }
 
     }else res.accept(data);
@@ -101,16 +107,17 @@ Target.prototype[define]({
         res = rs.get(event);
 
     if(res) return res.yielded;
-
     rs.set(event,res = new Resolver());
-    if(typeof event == 'string' && !this[current][event])
-      this[emitter].give(this.eventListened,event);
+    if(typeof event == 'string')
+      handleEvent(event,this[current],this[emitter],this,res.yielded.listeners);
 
     return res.yielded;
   },
 
   listened: function(event){
-    return this[resolver].has(event);
+    res = this[resolver].get(event);
+    if(!res) return false;
+    return res.yielded.listeners.value > 0;
   },
 
   is: function(event){
@@ -175,6 +182,17 @@ function call(args,listener,tg){
   try{ walk(listener,args,tg); }
   catch(e){ }
 }
+
+handleEvent = walk.wrap(function*(event,current,emitter,target,listeners){
+
+  while(true){
+    yield listeners.gt(0);
+    if(!current[event]) emitter.give(target.eventListened,event);
+    yield listeners.is(0);
+    if(!current[event]) emitter.give(target.eventIgnored,event);
+  }
+
+});
 
 // -- on
 
