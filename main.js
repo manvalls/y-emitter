@@ -65,7 +65,7 @@ function giveIt(em,event,data){
         delete c[event];
         if(!rs.has(event)) em.give(tg.eventIgnored,event);
       }
-      
+
     }else res.accept(data);
 
   }
@@ -156,7 +156,8 @@ Target.prototype[define]({
   },
 
   eventListened: Symbol(),
-  eventIgnored: Symbol()
+  eventIgnored: Symbol(),
+  ['3asKNsYzcdGduft']: 57
 
 });
 
