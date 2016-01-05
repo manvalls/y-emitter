@@ -19,7 +19,7 @@ t('Events',function*(){
 t('States',function*(){
   var emitter = new Emitter(),
       target = emitter.target,
-      yd;
+      yd,yd2;
 
   emitter.set('foo','bar');
   assert.strictEqual(yield target.until('foo'),'bar');
@@ -30,7 +30,14 @@ t('States',function*(){
   emitter.queue('foo','bar');
   assert.strictEqual(yield target.until('foo'),'bar');
 
+  yield target.untilNot('bar');
+  yd = target.untilNot('foo');
+  yd2 = target.untilNot('foo');
+
   emitter.sun('bar','foo');
+  yield yd;
+  yield yd2;
+  
   yield target.walk(function*(){
     assert(this.isNot('foo'));
     assert(!this.is('foo'));

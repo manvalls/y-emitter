@@ -5,6 +5,7 @@ var define = require('u-proto/define'),
     Detacher = require('detacher'),
 
     resolver = Symbol(),
+    notResolver = Symbol(),
     status = Symbol(),
     target = Symbol(),
     emitter = Symbol(),
@@ -40,7 +41,15 @@ Emitter.prototype[define](bag = {
   },
 
   unset: function(event){
+    var res;
+
     this[target][status].delete(event);
+    if(this[target][notResolver].has(event)){
+      res = this[target][notResolver].get(event);
+      this[target][notResolver].delete(event);
+      res.accept();
+    }
+
   },
 
   sun: function(state1,state2){
@@ -89,6 +98,7 @@ function Target(prop){
   }
 
   this[resolver] = new Map();
+  this[notResolver] = new Map();
   this[status] = new Map();
   this[current] = Object.create(null);
 }
@@ -100,6 +110,16 @@ Target.prototype[define]({
 
     if(yd) return yd;
     return this.untilNext(event);
+  },
+
+  untilNot: function(event){
+    var res;
+
+    if(this.isNot(event)) return Resolver.accept();
+    if(!this[notResolver].has(event)) this[notResolver].set(event,res = new Resolver());
+    else res = this[notResolver].get(event);
+
+    return res.yielded;
   },
 
   untilNext: function(event){
