@@ -10,6 +10,8 @@ var define = require('u-proto/define'),
     target = Symbol(),
     emitter = Symbol(),
     current = Symbol(),
+    handle = Symbol(),
+    queue = Symbol(),
 
     bag,handleEvent;
 
@@ -26,18 +28,18 @@ Emitter.prototype[define](bag = {
 
   give: function(event,data){
     if(this.target.is(event)) return this.set(event,data);
-    giveIt(this,event,data);
+    giveOrQueue(this,event,data);
   },
 
   queue: walk.wrap(function*(event,data){
     if(this.target.is(event)) return this.set(event,data);
     yield this.target.until(event).listeners.gt(0);
-    giveIt(this,event,data);
+    giveOrQueue(this,event,data);
   }),
 
   set: function(event,data){
     this[target][status].set(event,Resolver.accept(data));
-    giveIt(this,event,data);
+    giveOrQueue(this,event,data);
   },
 
   unset: function(event){
@@ -55,9 +57,24 @@ Emitter.prototype[define](bag = {
   sun: function(state1,state2){
     this.unset(state2);
     this.set(state1);
-  }
+  },
+
+  bind: require('./Emitter/bind.js')
 
 });
+
+function giveOrQueue(em,event,data){
+  var args,q;
+
+  if(em[queue]) em[queue].push([em,event,data]);
+  else{
+    em[queue] = q = [];
+    giveIt(em,event,data);
+    while(args = q.shift()) giveIt(...args);
+    delete em[queue];
+  }
+
+}
 
 function giveIt(em,event,data){
   var tg = em[target],
@@ -68,19 +85,12 @@ function giveIt(em,event,data){
   if(res){
     rs.delete(event);
 
+    if(res[handle]) res[handle].pause();
     if(res.yielded.listeners.value > 0 && typeof event == 'string'){
-      c = tg[current];
-
-      c[event] = c[event] || 0;
-      c[event]++;
-
+      tg[current] = event;
       res.accept(data);
-
-      if(!--c[event]){
-        delete c[event];
-        if(!tg.listened(event)) em.give(tg.eventIgnored,event);
-      }
-
+      delete tg[current];
+      if(!tg.listened(event)) em.give(tg.eventIgnored,event);
     }else res.accept(data);
 
   }
@@ -100,7 +110,6 @@ function Target(prop){
   this[resolver] = new Map();
   this[notResolver] = new Map();
   this[status] = new Map();
-  this[current] = Object.create(null);
 }
 
 Target.prototype[define]({
@@ -129,7 +138,7 @@ Target.prototype[define]({
     if(res) return res.yielded;
     rs.set(event,res = new Resolver());
     if(typeof event == 'string')
-      handleEvent(event,this[current],this[emitter],this,res.yielded.listeners);
+      res[handle] = handleEvent(event,this[emitter],this,res.yielded.listeners);
 
     return res.yielded;
   },
@@ -179,7 +188,7 @@ Target.prototype[define]({
   },
 
   events: function(){
-    return strings(this[resolver].keys());
+    return events(this[resolver].keys(),this);
   },
 
   eventListened: Symbol(),
@@ -194,8 +203,9 @@ function pauseIt(w){
   w.pause();
 }
 
-function* strings(it){
-  for(var v of it) if(typeof v == 'string') yield v;
+function* events(it,target){
+  var event;
+  for(event of it) if(typeof event == 'string' && target.listened(event)) yield event;
 }
 
 function call(args,listener,tg){
@@ -203,13 +213,13 @@ function call(args,listener,tg){
   catch(e){ }
 }
 
-handleEvent = walk.wrap(function*(event,current,emitter,target,listeners){
+handleEvent = walk.wrap(function*(event,emitter,target,listeners){
 
   while(true){
     yield listeners.gt(0);
-    if(!current[event]) emitter.give(target.eventListened,event);
+    if(target[current] != event) emitter.give(target.eventListened,event);
     yield listeners.is(0);
-    if(!current[event]) emitter.give(target.eventIgnored,event);
+    if(target[current] != event) emitter.give(target.eventIgnored,event);
   }
 
 });

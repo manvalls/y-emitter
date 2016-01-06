@@ -37,7 +37,7 @@ t('States',function*(){
   emitter.sun('bar','foo');
   yield yd;
   yield yd2;
-  
+
   yield target.walk(function*(){
     assert(this.isNot('foo'));
     assert(!this.is('foo'));
@@ -94,7 +94,7 @@ t('on',function*(){
   emitter.give('recursive',0);
   assert.strictEqual(tn,50);
   assert.strictEqual(rn,0);
-  assert.strictEqual(k,50);
+  assert.strictEqual(k,0);
 
 });
 
@@ -170,6 +170,8 @@ t('eventListened / eventIgnored',function(){
   ei = 0;
 
   target.once(event,function(){
+    d = target.once(event,function(){ });
+    d.detach();
     target.once(event,function(){ });
     emitter.give(event);
   });
@@ -179,4 +181,41 @@ t('eventListened / eventIgnored',function(){
   emitter.give(event);
   assert.strictEqual(el,1);
   assert.strictEqual(ei,1);
+});
+
+t('Bind',function*(){
+  var emitter = new Emitter(),
+      target = emitter.target,
+      emitter2 = new Emitter(),
+      target2 = emitter2.target,
+      d,yd,test;
+
+  target.on('test',function(){
+    test = true;
+  });
+
+  d = emitter.bind(target2);
+  emitter2.queue('foo','bar');
+  target.once(target.eventIgnored,function*(event){
+    yield target.until('foo');
+  });
+
+  assert.strictEqual(yield target.until('foo'),'bar');
+  emitter2.give('test');
+  yield target.until('test');
+  assert(test);
+
+  emitter2.set('lorem ipsum');
+  yield target.until('lorem ipsum');
+  emitter2.set('lorem ipsum',42);
+  assert.strictEqual(yield target.until('lorem ipsum'),42);
+  emitter2.unset('lorem ipsum');
+  yield target.untilNot('lorem ipsum');
+  emitter2.set('ready');
+  yield target.until('ready');
+
+  d.detach();
+  emitter2.unset('ready');
+  yield target.until('ready');
+
 });
