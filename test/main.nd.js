@@ -17,8 +17,8 @@ t('Events',function*(){
 });
 
 t('States',function*(){
-  var emitter = new Emitter(),
-      target = emitter.target,
+  var emitter = new Emitter.Hybrid(),
+      target = emitter,
       yd,yd2;
 
   emitter.set('foo','bar');
@@ -217,5 +217,25 @@ t('Bind',function*(){
   d.detach();
   emitter2.unset('ready');
   yield target.until('ready');
+
+});
+
+t('Delegation',function*(){
+  var src = new Emitter(),
+      dst = new Emitter(),
+      emitter = new Emitter(dst,src.target),
+      target = emitter.target;
+
+  emitter.queue('foo');
+  yield dst.target.until('foo');
+  emitter.give('bar');
+  yield dst.target.until('bar');
+  emitter.set('ready');
+  assert(dst.target.is('ready'));
+  emitter.unset('ready');
+  assert(dst.target.isNot('ready'));
+
+  src.queue('foo');
+  yield target.until('foo');
 
 });

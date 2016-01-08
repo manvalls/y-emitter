@@ -17,9 +17,16 @@ var define = require('u-proto/define'),
 
 // Emitter
 
-function Emitter(){
-  this[target] = new Target();
-  this[target][emitter] = this;
+function Emitter(e,t){
+
+  if(e){
+    this[emitter] = e;
+    this[target] = t;
+  }else{
+    this[target] = new Target();
+    this[target][emitter] = this;
+  }
+
 };
 
 Emitter.prototype[define](bag = {
@@ -27,17 +34,20 @@ Emitter.prototype[define](bag = {
   get target(){ return this[target]; },
 
   give: function(event,data){
+    if(this[emitter]) return this[emitter].give(event,data);
     if(this.target.is(event)) return this.set(event,data);
     giveOrQueue(this,event,data);
   },
 
   queue: walk.wrap(function*(event,data){
+    if(this[emitter]) return this[emitter].queue(event,data);
     if(this.target.is(event)) return this.set(event,data);
     yield this.target.until(event).listeners.gt(0);
     giveOrQueue(this,event,data);
   }),
 
   set: function(event,data){
+    if(this[emitter]) return this[emitter].set(event,data);
     this[target][status].set(event,Resolver.accept(data));
     giveOrQueue(this,event,data);
   },
@@ -45,6 +55,7 @@ Emitter.prototype[define](bag = {
   unset: function(event){
     var res;
 
+    if(this[emitter]) return this[emitter].unset(event);
     this[target][status].delete(event);
     if(this[target][notResolver].has(event)){
       res = this[target][notResolver].get(event);
@@ -251,15 +262,27 @@ function* onceLoop(args,event,listener,tg,dArgs){
 
 // HybridTarget
 
-function HybridTarget(){
-  this[target] = this;
-  this[emitter] = this;
-  Target.call(this);
+function HybridTarget(e){
+  e = e || new Emitter();
+  this[emitter] = e;
+  this[target] = e.target;
 }
 
 HybridTarget.prototype = Object.create(Target.prototype);
 HybridTarget.prototype[define]('constructor',HybridTarget);
 HybridTarget.prototype[define](bag);
+
+HybridTarget.prototype[define]({
+
+  until: function(event){ return this[target].until(event); },
+  untilNot: function(event){ return this[target].untilNot(event); },
+  untilNext: function(event){ return this[target].untilNext(event); },
+  listened: function(event){ return this[target].listened(event); },
+  is: function(event){ return this[target].is(event); },
+  isNot: function(event){ return this[target].isNot(event); },
+  events: function(){ return this[target].events(); }
+
+});
 
 /*/ exports /*/
 
