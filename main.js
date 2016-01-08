@@ -70,7 +70,8 @@ Emitter.prototype[define](bag = {
     this.set(state1);
   },
 
-  bind: require('./Emitter/bind.js')
+  bind: require('./Emitter/bind.js'),
+  ['3asKNsYzcdGduft']: 58
 
 });
 
