@@ -53,20 +53,18 @@ Emitter.prototype[define](bag = {
   },
 
   unset: function(event){
-    var res,was;
+    var res;
 
     if(this[emitter]) return this[emitter].unset(event);
-
-    was = this[target].is(event);
+    
     this[target][status].delete(event);
-
     if(this[target][notResolver].has(event)){
       res = this[target][notResolver].get(event);
       this[target][notResolver].delete(event);
       res.accept();
     }
 
-    if(was && !this[target].is(event)) this.give(this[target].stateUnset,event);
+    this.give(this[target].stateUnset,event);
 
   },
 
