@@ -75,6 +75,7 @@ t('on',function*(){
   assert.strictEqual(n,2);
 
   emitter.unset('foo');
+  emitter.unset('foo');
   emitter.give('foo','bar');
   assert.strictEqual(last,'bar');
   assert.strictEqual(arg,42);

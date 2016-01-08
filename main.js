@@ -53,15 +53,20 @@ Emitter.prototype[define](bag = {
   },
 
   unset: function(event){
-    var res;
+    var res,was;
 
     if(this[emitter]) return this[emitter].unset(event);
+
+    was = this[target].is(event);
     this[target][status].delete(event);
+
     if(this[target][notResolver].has(event)){
       res = this[target][notResolver].get(event);
       this[target][notResolver].delete(event);
       res.accept();
     }
+
+    if(was && !this[target].is(event)) this.give(this[target].stateUnset,event);
 
   },
 
@@ -205,6 +210,7 @@ Target.prototype[define]({
 
   eventListened: Symbol(),
   eventIgnored: Symbol(),
+  stateUnset: Symbol(),
   ['3asKNsYzcdGduft']: 57
 
 });
