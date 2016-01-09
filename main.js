@@ -52,7 +52,7 @@ Emitter.prototype[define](bag = {
     giveOrQueue(this,event,data);
   },
 
-  unset: function(event){
+  unset: function(event,silent){
     var res;
 
     if(this[emitter]) return this[emitter].unset(event);
@@ -64,7 +64,7 @@ Emitter.prototype[define](bag = {
       res.accept();
     }
 
-    this.give(this[target].stateUnset,event);
+    if(!silent) this.give(this[target].stateUnset,event);
 
   },
 
