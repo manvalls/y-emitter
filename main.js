@@ -275,6 +275,7 @@ function HybridTarget(e){
 
 HybridTarget.prototype = Object.create(Target.prototype);
 HybridTarget.prototype[define]('constructor',HybridTarget);
+HybridYielded.prototype[define]('3asKNsYzcdGduft',59);
 HybridTarget.prototype[define](bag);
 
 HybridTarget.prototype[define]({
