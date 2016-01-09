@@ -56,7 +56,7 @@ Emitter.prototype[define](bag = {
     var res;
 
     if(this[emitter]) return this[emitter].unset(event);
-    
+
     this[target][status].delete(event);
     if(this[target][notResolver].has(event)){
       res = this[target][notResolver].get(event);
@@ -275,7 +275,7 @@ function HybridTarget(e){
 
 HybridTarget.prototype = Object.create(Target.prototype);
 HybridTarget.prototype[define]('constructor',HybridTarget);
-HybridYielded.prototype[define]('3asKNsYzcdGduft',59);
+HybridTarget.prototype[define]('3asKNsYzcdGduft',59);
 HybridTarget.prototype[define](bag);
 
 HybridTarget.prototype[define]({
