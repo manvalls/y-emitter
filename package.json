@@ -4,11 +4,11 @@
   "description": "Yielding emitter",
   "main": "main.js",
   "dependencies": {
-    "detacher": "^1.4.3",
-    "u-proto": "^5.4.4",
-    "y-resolver": "^9.0.0",
-    "y-setter": "^5.0.2",
-    "y-walk": "^10.0.2"
+    "detacher": "^2.0.1",
+    "u-proto": "^6.1.0",
+    "y-resolver": "^9.1.6",
+    "y-setter": "^5.3.1",
+    "y-walk": "^10.0.3"
   },
   "repository": {
     "type": "git",
@@ -20,7 +20,7 @@
   "author": "Manuel Valls Fernández <manolo@chatiku.com>",
   "license": "LGPL-3.0",
   "devDependencies": {
-    "u-test": "^3.1.11"
+    "u-test": "^3.6.6"
   },
   "scripts": {
     "test": "u-test"
