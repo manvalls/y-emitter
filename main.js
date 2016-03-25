@@ -159,7 +159,7 @@ Target.prototype[define]({
   },
 
   listened: function(event){
-    res = this[resolver].get(event);
+    var res = this[resolver].get(event);
     if(!res) return false;
     return res.yielded.listeners.value > 0;
   },
