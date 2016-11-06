@@ -226,7 +226,11 @@ function* events(it,target){
 
 function call(args,listener,tg){
   try{ walk(listener,args,tg); }
-  catch(e){ }
+  catch(e){ setTimeout(throwError,0,e); }
+}
+
+function throwError(e){
+  throw e;
 }
 
 handleEvent = walk.wrap(function*(event,emitter,target,listeners){
