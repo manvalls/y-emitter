@@ -18,7 +18,7 @@
     "url": "https://github.com/manvalls/y-emitter/issues"
   },
   "author": "Manuel Valls Fernández <manolo@chatiku.com>",
-  "license": "LGPL-3.0",
+  "license": "Apache-2.0",
   "devDependencies": {
     "u-test": "^3.8.8"
   },
