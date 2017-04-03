@@ -7,7 +7,7 @@ module.exports = function bind(target){
 
   d1 = this.target.on(this.target.eventListened,onEL,detachers,target,this,link);
   d2 = this.target.on(this.target.eventIgnored,onEI,detachers);
-  d3 = target.on(target.stateUnset,onEU,this);
+  d3 = target.on(target.unsetCall,onEU,this);
 
   for(event of this.target.events()) onEL(event,null,detachers,target,this,link);
 
@@ -25,14 +25,17 @@ function onEI(event,d,detachers){
   detachers.delete(event);
 }
 
-function onEU(state,d,em){
+function onEU([state],d,em){
   em.unset(state);
 }
 
 function* listener(ev,d,en,em,link){
+  var state;
+
   if(this.is(en)){
-    if(em.target.isNot(en)) em.set(en,ev);
-    else em.set(en,ev);
+    state = yield this.until(en);
+    if(state === ev) em.set(en,ev);
+    else em.give(en,ev);
   }else em.give(en,ev);
 }
 

@@ -1,6 +1,6 @@
 var t = require('u-test'),
     assert = require('assert'),
-    Emitter = require('../main.js');
+    Emitter = require('../main');
 
 t('Events',function*(){
   var emitter = new Emitter(),
@@ -24,11 +24,8 @@ t('States',function*(){
   emitter.set('foo','bar');
   assert.strictEqual(yield target.until('foo'),'bar');
 
-  emitter.give('foo','foo');
+  emitter.set('foo','foo');
   assert.strictEqual(yield target.until('foo'),'foo');
-
-  emitter.queue('foo','bar');
-  assert.strictEqual(yield target.until('foo'),'bar');
 
   yield target.untilNot('bar');
   yd = target.untilNot('foo');
@@ -60,15 +57,13 @@ t('on',function*(){
     n++;
   },42);
 
-  Emitter.Target.call(target); // noop
-
   emitter.set('foo','bar');
   assert.strictEqual(last,'bar');
   assert.strictEqual(yield target.until('foo'),'bar');
   assert.strictEqual(arg,42);
   assert.strictEqual(n,1);
 
-  emitter.give('foo','foo');
+  emitter.set('foo','foo');
   assert.strictEqual(last,'foo');
   assert.strictEqual(yield target.until('foo'),'foo');
   assert.strictEqual(arg,42);
