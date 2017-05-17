@@ -2,7 +2,7 @@
   "name": "y-emitter",
   "version": "13.0.0",
   "description": "Yielding emitter",
-  "main": "main.js",
+  "main": "main/index.js",
   "dependencies": {
     "detacher": "^2.0.10",
     "u-proto": "^7.1.6",
