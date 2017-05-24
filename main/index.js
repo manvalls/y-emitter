@@ -99,14 +99,19 @@ class Emitter{
 function give(event, data, that, rs, queue, queuing, current){
   var res, yd, q, listened;
 
-  yd = Resolver.when(data);
+  if(data instanceof Object && typeof data.then == 'function'){
 
-  if(!yd.done){
-    yd.listen(give, [event, yd, that, rs, queue, queuing, current]);
-    return;
+    yd = Resolver.when(data);
+
+    if(!yd.done){
+      yd.listen(give, [event, yd, that, rs, queue, queuing, current]);
+      return;
+    }
+
+    if(!yd.accepted) return;
+    data = yd.value;
+
   }
-
-  if(!yd.accepted) return;
 
   if(that[queuing]){
     that[queue].push([event, data]);
@@ -120,7 +125,7 @@ function give(event, data, that, rs, queue, queuing, current){
   res = that.target[rs].get(event);
   if(res){
     that.target[rs].delete(event);
-    res.accept(yd.value);
+    res.accept(data);
   }
 
   delete that.target[current];
